@@ -100,7 +100,7 @@ def tsne(X = Math.array([]), no_dims = 2, initial_dims = 50, perplexity = 30.0):
 	# Initialize variables
 	X = pca(X, initial_dims).real;
 	(n, d) = X.shape;
-	max_iter = 2;
+	max_iter = 1000;
 	initial_momentum = 0.5;
 	final_momentum = 0.8;
 	eta = 500;
@@ -160,12 +160,13 @@ def tsne(X = Math.array([]), no_dims = 2, initial_dims = 50, perplexity = 30.0):
 	return Y;
 
 
-def tsne1(Shared_length, Site_length, X = Math.array([]), no_dims = 2, initial_dims = 50, perplexity = 30.0, Y_1 = Math.array([])):
+def tsne1(Shared_length, X = Math.array([]), Y = Math.array([]), no_dims=2, initial_dims=50, perplexity=30.0):
+
 	"""Runs t-SNE on the dataset in the NxD array X to reduce its dimensionality to no_dims dimensions.
 	The syntaxis of the function is Y = tsne.tsne(X, no_dims, perplexity), where X is an NxD NumPy array."""
 
 	def updateS(Y,G):
-		return Y_1
+		return Y
 
 	def updateL(Y,G):
 		return Y + G
@@ -184,26 +185,14 @@ def tsne1(Shared_length, Site_length, X = Math.array([]), no_dims = 2, initial_d
 		print "Error: number of dimensions should be an integer.";
 		return -1;
 
-	# Initialize variables
-	#Y = [[0 for i in range(1778)] for j in range(2)]
-	difference = Site_length- Shared_length;
-	print(Shared_length, Site_length,difference)
-
-	Y = Math.random.randn(Site_length, no_dims);
 	X = pca(X, initial_dims).real;
 	(n, d) = X.shape;
-	max_iter = 2;
+	max_iter = 1000;
 	initial_momentum = 0.5;
 	final_momentum = 0.8;
 	eta = 500;
 	min_gain = 0.01;
-	index=0;
-	index1=0;
-	Y_2 = Math.random.randn(difference, no_dims);
-
-	Y[:Shared_length,:] = Y_1
-	Y[Shared_length:,:] = Y_2
-
+	Y = Math.random.randn(n, no_dims);
 	dY = Math.zeros((n, no_dims));
 	iY = Math.zeros((n, no_dims));
 	gains = Math.ones((n, no_dims));
@@ -236,7 +225,7 @@ def tsne1(Shared_length, Site_length, X = Math.array([]), no_dims = 2, initial_d
 			momentum = initial_momentum
 		else:
 			momentum = final_momentum
-		gains = (gains + 0.2) * ((dY > 0) != (iY > 0)) + (gains * 0.8) * ((dY > 0) == (iY > 0));
+			gains = (gains + 0.2) * ((dY > 0) != (iY > 0)) + (gains * 0.8) * ((dY > 0) == (iY > 0));
 		gains[gains < min_gain] = min_gain;
 		iY = momentum * iY - eta * (gains * dY);
 
@@ -261,6 +250,7 @@ def tsne1(Shared_length, Site_length, X = Math.array([]), no_dims = 2, initial_d
 			P = P / 4;
 
 	# Return solution
+
 	return Y;
 
 def normalize_columns(arr=Math.array([])):
@@ -275,11 +265,50 @@ def normalize_columns(arr=Math.array([])):
 
 
 
-def local_site(args, computation_phase):
+def local_site(sharedX,sharedY,sharedRows, sharedColumns, no_dims, computation_phase):
+	parser = argparse.ArgumentParser(description='''read in coinstac args for local computation''')
+	parser.add_argument('--run', type=json.loads, help='grab coinstac args')
 
-	sharedY = np.loadtxt(args["shared_Y"])
+	sharedX_data = np.loadtxt(sharedX["shared_X"])
+	sharedY_data = np.loadtxt(sharedY["shared_Y"])
 
-	return args
+	# load high dimensional site 1 data
+	localSite1_Data = ''' {"site1_Data":"Site_1_Mnist_X.txt"} '''
+	site1argsX = parser.parse_args(['--run', localSite1_Data])
+	Site1Data = np.loadtxt(site1argsX.run["site1_Data"])
+	(site1Rows, site1Columns) = Site1Data.shape;
+
+	# load label of site 1 data
+	site1Label = ''' {"site1_Label":"Shared_lable.txt"} '''
+	site1Label_args = parser.parse_args(['--run', site1Label])
+	site1Label = np.loadtxt(site1Label_args.run["site1_Label"])
+
+
+	# create combinded list by local and remote data
+	X = np.zeros(((sharedRows+site1Rows), sharedColumns));
+	X[:sharedRows, :] = sharedX_data;
+	X[sharedRows:, :] = Site1Data;
+	X = normalize_columns(X)
+
+	## create low dimensional position
+	Y = Math.random.randn((sharedRows+site1Rows), no_dims);
+
+	Y[:sharedRows, :] = sharedY_data;
+	Y_plot = tsne1(sharedRows, X, Y, no_dims=2, initial_dims=50, perplexity=30.0)
+
+
+	#save local site data into file
+	f1 = open("local_site1.txt", "w")
+	for i in range(sharedRows, len(Y_plot)):
+		f1.write(str(Y_plot[i][0]) + '\t')
+		f1.write(str(Y_plot[i][1]) + '\n')
+	f1.close()
+
+	# pass data to remote in json format
+	localJson = ''' {"local": "local_site1.txt"} '''
+	localY = parser.parse_args(['--run', localJson])
+
+	return (localY.run)
 
 
 
@@ -289,14 +318,17 @@ if __name__ == "__main__":
 	parser = argparse.ArgumentParser(description='''read in coinstac args for local computation''')
 	parser.add_argument('--run', type=json.loads, help='grab coinstac args')
 
+	no_dims =2
 
 	# load high dimensional shared data
-	sharedData = ''' {"shared_Data":"mnist2500_X.txt"} '''
+	sharedData = ''' {"shared_X":"Shared_Mnist_X.txt"} '''
 	argsX = parser.parse_args(['--run', sharedData])
-	sharedX = np.loadtxt(argsX.run["shared_Data"])
+	sharedX = np.loadtxt(argsX.run["shared_X"])
+	sharedX = normalize_columns(sharedX)
+	(sharedRows, sharedColumns) = sharedX.shape;
 
 	# load label of shared data
-	sharedLabel = ''' {"shared_Label":"mnist2500_labels.txt"} '''
+	sharedLabel = ''' {"shared_Label":"Shared_lable.txt"} '''
 	sharedLabel_args = parser.parse_args(['--run', sharedLabel])
 	sharedLabel = np.loadtxt(sharedLabel_args.run["shared_Label"])
 
@@ -305,16 +337,17 @@ if __name__ == "__main__":
 
 	f = open("Y_values.txt" , "w")
 	for i in range(0, len(Y)):
-		f.write(str(Y[i][0]) + '\t')  # str() converts to string
-		f.write(str(Y[i][1]) + '\n')  # str() converts to string
+		f.write(str(Y[i][0]) + '\t')
+		f.write(str(Y[i][1]) + '\n')
 	f.close()
 
 	sharedY = ''' {"shared_Y": "Y_values.txt"} '''
-	args = parser.parse_args(['--run', sharedY])
-	sharedY = np.loadtxt(args.run["shared_Y"])
+	argsY = parser.parse_args(['--run', sharedY])
+	sharedY = np.loadtxt(argsY.run["shared_Y"])
 
 
+	# receive data from local site
+	L1 = local_site(argsX.run, argsY.run,sharedRows, sharedColumns, no_dims, computation_phase=0)
+	LY = np.loadtxt(L1["local"])
 
-	L1 = local_site(args.run, computation_phase=0)
 
-	#X = np.loadtxt(args.run["input"])
