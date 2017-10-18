@@ -303,7 +303,7 @@ def local_site(args, computation_phase):
 
     # create low dimensional position
     combined_Y = np.random.randn(combined_X.shape[0], no_dims)
-    combined_Y[-shared_Y.shape[0]:, :] = shared_Y
+    combined_Y[:shared_Y.shape[0], :] = shared_Y
 
     Y_plot = tsne1(
         sharedRows,
@@ -334,7 +334,7 @@ if __name__ == "__main__":
     parser.add_argument('--run', type=json.loads, help='grab coinstac args')
 
     # load high dimensional shared data
-    sharedData = ''' {
+    sharedData = ''' {a
         "shared_X": "Shared_Mnist_X.txt",
         "shared_Label": "Shared_Label.txt",
         "no_dims": 2,
