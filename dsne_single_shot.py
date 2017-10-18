@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Wed Oct 18 05:59:22 2017
+Created on Wed Oct 18 08:59:22 2017
 
 @author: dsaha
 """
@@ -108,7 +108,7 @@ def tsne(X=np.array([]), no_dims=2, initial_dims=50, perplexity=30.0):
     # Initialize variables
     X = pca(X, initial_dims).real
     (n, d) = X.shape
-    max_iter = 10
+    max_iter = 1000
     initial_momentum = 0.5
     final_momentum = 0.8
     eta = 500
@@ -162,7 +162,7 @@ def tsne(X=np.array([]), no_dims=2, initial_dims=50, perplexity=30.0):
 
         # Stop lying about P-values
         if iter == 100:
-            P = P / 4
+            P = P / 4  # exaggerated by 7 but divided by 4 ??
 
     # Return solution
     return Y
@@ -205,7 +205,7 @@ def tsne1(Shared_length,
     final_momentum = 0.8
     eta = 500
     min_gain = 0.01
-    Y = np.random.randn(n, no_dims)  # ask about this
+    Y = np.random.randn(n, no_dims)  # ask about this: why not use the Y passed
     dY = np.zeros((n, no_dims))
     iY = np.zeros((n, no_dims))
     gains = np.ones((n, no_dims))
@@ -259,7 +259,7 @@ def tsne1(Shared_length,
 
         # Stop lying about P-values
         if iter == 100:
-            P = P / 4
+            P = P / 4  # exaggerated by 7 but divided by 4 ??
 
     return Y  # Return solution
 
