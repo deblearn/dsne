@@ -12,8 +12,18 @@ import argparse
 
 def Hbeta(D=np.array([]), beta=1.0):
     """Compute the perplexity and the P-row for a specific value of the
-    precision of a Gaussian distribution."""
+    precision of a Gaussian distribution.
 
+    Args:
+        D (float): matrix of euclidean distances between every pair of points
+        beta (float): Precision of Gaussian distribution
+                        Given as -1/(2*(sigma**2))
+
+    Returns:
+        H (float): Entropy
+        P (float): Similarity matrix (matrix of conditional probabilities)
+
+    """
     # Compute P-row and corresponding perplexity
     P = np.exp(-D.copy() * beta)
     sumP = sum(P)
@@ -24,7 +34,13 @@ def Hbeta(D=np.array([]), beta=1.0):
 
 def x2p(X=np.array([]), tol=1e-5, perplexity=30.0):
     """Performs a binary search to get P-values in such a way that each
-    conditional Gaussian has the same perplexity."""
+    conditional Gaussian has the same perplexity.
+
+    Args:
+
+    Returns:
+
+    """
 
     # Initialize some variables
     print("Computing pairwise distances...")
@@ -82,7 +98,17 @@ def x2p(X=np.array([]), tol=1e-5, perplexity=30.0):
 
 def pca(X=np.array([]), no_dims=50):
     """Runs PCA on the NxD array X in order to reduce its dimensionality to
-    no_dims dimensions."""
+    no_dims dimensions.
+
+    Args:
+        X (float): training data of size [examples, features]
+        no_dims (int): integer representing the number of dimensions to reduce
+                        the data to
+
+    Returns:
+        Y (float): reduced training data of size [examples, no_dims]
+
+    """
 
     print("Preprocessing the data using PCA...")
     (n, d) = X.shape
@@ -175,7 +201,7 @@ def tsne1(Shared_length,
           initial_dims=50,
           perplexity=30.0):
     """Runs t-SNE on the dataset in the NxD array X to reduce its
-    dimensionality to no_dims dimensions. The syntaxis of the function is
+    dimensionality to no_dims dimensions. The syntax of the function is
     Y = tsne.tsne(X, no_dims, perplexity), where X is an NxD NumPy array."""
 
     def updateS(Y, G):
@@ -205,7 +231,7 @@ def tsne1(Shared_length,
     final_momentum = 0.8
     eta = 500
     min_gain = 0.01
-    Y = np.random.randn(n, no_dims)  # ask about this: why not use the Y passed
+    Y = np.random.randn(n, no_dims)
     dY = np.zeros((n, no_dims))
     iY = np.zeros((n, no_dims))
     gains = np.ones((n, no_dims))
@@ -214,8 +240,7 @@ def tsne1(Shared_length,
     P = x2p(X, 1e-5, perplexity)
     P = P + np.transpose(P)
     P = P / np.sum(P)
-    P = P * 7
-    # early exaggeration
+    P = P * 7  # early exaggeration
     P = np.maximum(P, 1e-12)
 
     # Run iterations
@@ -259,7 +284,7 @@ def tsne1(Shared_length,
 
         # Stop lying about P-values
         if iter == 100:
-            P = P / 4  # exaggerated by 7 but divided by 4 ??
+            P = P / 4
 
     return Y  # Return solution
 
@@ -288,14 +313,11 @@ def local_site(args, computation_phase):
     parser.add_argument('--run', type=json.loads, help='grab coinstac args')
     localSite1_Data = ''' {
         "site1_Data": "Site_1_Mnist_X.txt",
-        "site1_Label": "Shared_label.txt"
+        "site1_Label": "Shared_Label.txt"
     } '''
     site1args = parser.parse_args(['--run', localSite1_Data])
     Site1Data = np.loadtxt(site1args.run["site1_Data"])
     (site1Rows, site1Columns) = Site1Data.shape
-
-    # load label of site 1 data
-    #    site1Label = np.loadtxt(site1args.run["site1_Label"])
 
     # create combinded list by local and remote data
     combined_X = np.concatenate((shared_X, Site1Data), axis=0)
@@ -314,11 +336,10 @@ def local_site(args, computation_phase):
         perplexity=perplexity)
 
     # save local site data into file
-    f1 = open("local_site1.txt", "w")
-    for i in range(sharedRows, len(Y_plot)):
-        f1.write(str(Y_plot[i][0]) + '\t')
-        f1.write(str(Y_plot[i][1]) + '\n')
-    f1.close()
+    with open("local_site1.txt", "w") as f1:
+        for i in range(sharedRows, len(Y_plot)):
+            f1.write(str(Y_plot[i][0]) + '\t')
+            f1.write(str(Y_plot[i][1]) + '\n')
 
     # pass data to remote in json format
     localJson = ''' {"local": "local_site1.txt"} '''
@@ -334,7 +355,7 @@ if __name__ == "__main__":
     parser.add_argument('--run', type=json.loads, help='grab coinstac args')
 
     # load high dimensional shared data
-    sharedData = ''' {a
+    sharedData = ''' {
         "shared_X": "Shared_Mnist_X.txt",
         "shared_Label": "Shared_Label.txt",
         "no_dims": 2,
